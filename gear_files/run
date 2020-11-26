@@ -1,0 +1,90 @@
+#!/usr/bin/python3
+
+import os
+import json
+from pathlib import Path
+
+
+SUBJECTS_DIR = Path("/usr/local/freesurfer/subjects")
+FREESURFER_HOME = "/usr/local/freesurfer"
+LICENSE_FILE = FREESURFER_HOME + "/license.txt"
+
+###################### Define the Paths and parameters ########################
+
+# Print the CPU info
+os.system('cat /proc/cpuinfo')
+
+# Set paths and create some folders
+flywheel_base ='/flywheel/v0/'
+first_output_dir = '/firstOutput'
+final_output_dir = os.path.join(flywheel_base, 'output')
+manifest_file = os.path.join(flywheel_base, 'manifest.json')
+config_path = os.path.join(flywheel_base, 'config.json')
+os.system('mkdir %s'%first_output_dir)
+freesurfer_environment_path = 'export FREESURFER_HOME=/usr/local/freesurfer;export SUBJECTS_DIR=/usr/local/freesurfer/subjects/; export PATH="$FREESURFER_HOME/bin:$PATH"; export PATH="$SUBJECTS_DIR:$PATH"'
+####################### Process Inputs ######################################## 
+
+# Unzip the recon all results and move the subject to the subjects folder
+fs_subject_folder = os.path.join(flywheel_base, 'input/reconAllGearOutput')
+zip_file = os.path.join(fs_subject_folder, os.listdir(fs_subject_folder)[0])
+unzipped_folder_path = '/opt/unzipped_folder'
+os.system('mkdir %s' % unzipped_folder_path)
+os.system('unzip -q %s -d %s' % (zip_file, unzipped_folder_path))
+subject_name = os.listdir(unzipped_folder_path)[0]
+initial_subject_folder = os.path.join(unzipped_folder_path, subject_name)
+os.system('cp -r %s $SUBJECTS_DIR/' % initial_subject_folder)
+
+# Get the additional scan path if exists
+FILE_ADDITIONAL_SCAN_Path = os.path.join(flywheel_base, 'input/FILE_ADDITIONAL_SCAN')
+if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
+    FILE_ADDITIONAL_SCAN = os.path.join(FILE_ADDITIONAL_SCAN_Path, os.listdir(FILE_ADDITIONAL_SCAN_Path)[0])
+
+# Get the freesurfer license and move it to the freesurfer environment
+freesurferLicensePath = os.path.join(flywheel_base, 'input/freesurferLicense')
+freesurferLicense = os.path.join(freesurferLicensePath, os.listdir(freesurferLicensePath)[0])
+os.system('cp %s $FREESURFER_HOME/license.txt' % freesurferLicense)
+
+###################Parse Config Here############################
+
+with open(config_path) as config_file:
+    job_config = json.load(config_file)
+config = job_config['config']
+
+ANALYSIS_ID = config['ANALYSIS_ID']
+BBREGISTER_MODE = config['BBREGISTER_MODE']
+n_threads = config['n_threads']
+output_entire_subject_dir = config['output_entire_subject_dir']
+
+# Convert n_threads to string
+n_threads = str(n_threads)
+
+###################Run Algorithm################################
+# Run the segmentation script. Run with extra options if an extra scan is specified
+if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
+    os.system('export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=%s; %s;/usr/local/freesurfer/bin/segmentThalamicNuclei.sh %s %s %s %s' % (n_threads, freesurfer_environment_path, subject_name,
+                                                                                                        FILE_ADDITIONAL_SCAN,
+                                                                                                        ANALYSIS_ID, BBREGISTER_MODE))
+else:
+    os.system('export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=%s; %s;/usr/local/freesurfer/bin/segmentThalamicNuclei.sh %s' % (n_threads, freesurfer_environment_path, subject_name))
+
+################## Zip everything and output ##################################
+
+if output_entire_subject_dir == True;
+    os.system('cd $SUBJECTS_DIR; zip -r %s %s' % (final_output_dir, subject_name))
+else:
+    if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.%s.volumes.txt' % (subject_name, ANALYSIS_ID))
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.%s.mgz' % (subject_name, ANALYSIS_ID))
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.%s.FSvoxelSpace.mgz' % (subject_name, ANALYSIS_ID))
+        os.system('cp $SUBJECTS_DIR/%s/mri/%s.thalamus.%s.mgz' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE))
+        os.system('cp $SUBJECTS_DIR/%s/mri/%s.thalamus.%s.stripped.bfcorr.mgz' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE))                
+        os.system('cp $SUBJECTS_DIR/%s/mri/nu.mgz' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/stats/thalamic-nuclei.lh.v12.%s.stats' % (subject_name, ANALYSIS_ID))
+        os.system('cp $SUBJECTS_DIR/%s/stats/thalamic-nuclei.rh.v12.%s.stats' % (subject_name, ANALYSIS_ID))        
+    else:
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.T1.volumes.txt' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.T1.mgz' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/mri/ThalamicNuclei.v12.T1.FSvoxelSpace.mgz' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/mri/nu.mgz' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/stats/thalamic-nuclei.lh.v12.T1.stats' % subject_name)
+        os.system('cp $SUBJECTS_DIR/%s/stats/thalamic-nuclei.rh.v12.T1.stats' % subject_name)
