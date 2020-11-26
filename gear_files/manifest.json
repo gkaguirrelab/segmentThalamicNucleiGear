@@ -2,7 +2,7 @@
 	"name": "segmentthalamicnuclei",
 	"label": "segmentThalamicNuclei: Produce parcellation of the thalamus",
 	"description": "This tool produces a parcellation of the thalamus into 25 different nuclei, using a probabilistic atlas built with histological data. Based on A probabilistic atlas of the human thalamic nuclei combining ex vivo MRI and histology. Iglesias, J.E., Insausti, R., Lerma-Usabiaga, G., Bocchetta, M., Van Leemput, K., Greve, D., van der Kouwe, A., Caballero-Gaudes, C., Paz-Alonso, P. Neuroimage (accepted).",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"inputs": {
 		"FILE_ADDITIONAL_SCAN": {
 			"base": "file",
