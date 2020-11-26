@@ -69,7 +69,7 @@ else:
 
 ################## Zip everything and output ##################################
 
-if output_entire_subject_dir == True;
+if output_entire_subject_dir == True:
     os.system('cd $SUBJECTS_DIR; zip -r %s %s' % (final_output_dir, subject_name))
 else:
     if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
