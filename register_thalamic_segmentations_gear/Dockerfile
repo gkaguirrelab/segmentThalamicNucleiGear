@@ -11,7 +11,7 @@ COPY manifest.json run ${FLYWHEEL}
 RUN chmod +x /flywheel/v0/run
 
 RUN apt-get install ants zip unzip python3 python3-pip
-RUN pyton3-pip install nibabel nilearn 
+RUN pyton3-pip install nibabel==2.5.1 matplotlib imageio
 
 # Set the entrypoint  
 ENTRYPOINT /flywheel/v0/run
