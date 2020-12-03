@@ -1,0 +1,49 @@
+{
+	"name": "register-thalamic-segmentations",
+	"label": "registerThalamicSegmentations: Register thalamic segmentaitons to ACPC using ANTS",
+	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to ACPC to make them usable with fixel maps. Requires qsiprep output in T1w and recon all archive for the registration",
+	"version": "0.1.0",
+	"inputs": {
+		"qsiprepArchive": {
+			"base": "file",
+			"description": "qsiprep output archive",
+			"optional": false,
+			"type": {
+				"enum": [
+					"archive"
+				]
+			}
+		},
+		"thalamicSegmentationArchive": {
+			"base": "file",
+			"description": "Thalamic segmentation archive produced by segmentthalamicnuclei gear",
+			"optional": false,
+			"type": {
+				"enum": [
+					"archive"
+				]
+			}
+		}
+	},
+	"config": {
+		"verbose": {
+			"description": "Verbose.",
+			"default": "0",
+			"type": "string"
+		}
+	},
+	"author": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu>",
+	"maintainer": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu>",
+	"license": "Other",
+	"source": "http://freesurfer.net/fswiki/ThalamicNuclei",
+	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
+	"custom": {
+		"flywheel": {
+			"suite": "GKAguirreLab"
+		},
+		"gear-builder": {
+			"category": "analysis",
+			"image": "gkaguirrelab/segmentthalamicnuclei:0.1.0"
+		}
+	}
+}

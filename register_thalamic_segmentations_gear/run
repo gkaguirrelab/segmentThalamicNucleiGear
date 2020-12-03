@@ -1,0 +1,94 @@
+#!/usr/bin/python3
+
+import os, json
+
+###################### Define the Paths and parameters ########################
+
+# Print the CPU info
+os.system('cat /proc/cpuinfo')
+
+# Set paths and create some folders
+flywheel_base ='/flywheel/v0/'
+first_output_dir = '/firstOutput'
+workdir = '/workdir'
+final_output_dir = os.path.join(flywheel_base, 'output')
+manifest_file = os.path.join(flywheel_base, 'manifest.json')
+config_path = os.path.join(flywheel_base, 'config.json')
+os.system('mkdir %s'%first_output_dir)
+os.system('mkdir %s'%workdir)
+####################### Process Inputs ######################################## 
+
+# Unzip the thalamic segmentation archive
+thalamicSegmentationArchivePath = os.path.join(flywheel_base, 'input/thalamicSegmentationArchive')
+thalamicSegmentationArchive = os.path.join(thalamicSegmentationArchivePath, os.listdir(thalamicSegmentationArchivePath)[0])
+unzipped_folder_path = '/opt/unzipped_folder_thalamic'
+os.system('mkdir %s' % unzipped_folder_path)
+os.system('unzip -q %s -d %s' % (thalamicSegmentationArchive, unzipped_folder_path))
+nu_image = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0], 'nu.mgz')
+
+# Unzip the qsiprep archive 
+qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
+qsiprepArchive = os.path.join(qsiprepArchivePath, os.listdir(qsiprepArchivePath)[0])
+unzipped_folder_path_two = '/opt/unzipped_folder_qsiprep'
+os.system('mkdir %s' % unzipped_folder_path_two)
+os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
+main_qsiprep_archive = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path_two)[0])
+qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0], 'qsiprep')
+for i in os.listdir(qsiprep_dir):
+    if os.path.isdir(i) & 'sub' in i:
+        processed_anatomical = os.path.join(qsiprep_dir, i, 'anat', '%s_desc-preproc_T1w.nii.gz' % i)
+
+###################Parse Config Here############################
+
+with open(config_path) as config_file:
+    job_config = json.load(config_file)
+config = job_config['config']
+
+verbose = config['verbose']
+
+###################Run Algorithm################################
+# Run ants registration 
+reg_command = '''antsRegistration --verbose %s --dimensionality 3
+                 --float 0 --collapse-output-transforms 1 
+                 --output [ registered,/workdir/registeredWarped.nii.gz,/workdir/registeredInverseWarped.nii.gz ]
+                 --interpolation Linear --use-histogram-matching 0 --winsorize-image-intensities [ 0.005,0.995 ] 
+                 --initial-moving-transform [ %s,%s,1 ] --transform Rigid[ 0.1 ] 
+                 --metric MI[ %s,%s,1,32,Regular,0.25 ] 
+                 --convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 8x4x2x1 
+                 --smoothing-sigmas 3x2x1x0vox''' % (verbose, processed_anatomical, nu_image,
+                                                     processed_anatomical, nu_image)
+
+os.system(reg_command)    
+generic_affine = '/workdir/registered0GenericAffine.mat'
+warped = '/workdir/registeredWarped.nii'
+
+for file in os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]):
+    path_to_file = os.path.join(os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]), file)
+    if os.path.splitext(file)[1] == '.mgz':   
+        command = 'antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -v %s' % (path_to_file, processed_anatomical,
+                                                                              path_to_file, generic_affine, verbose)
+        os.system(command)
+    
+    os.system('cp %s %s/' % (path_to_file, final_output_dir))
+
+################## Zip everything and output ##################################
+
+if output_entire_subject_dir == True:
+    os.system('cd /usr/local/freesurfer/subjects/; zip -r %s %s' % (final_output_dir, subject_name))
+else:
+    if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.volumes.txt %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.mgz %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/%s.thalamus.%s.mgz %s/' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/%s.thalamus.%s.stripped.bfcorr.mgz %s/' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE, final_output_dir))                
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/nu.mgz %s' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats %s/' % (subject_name, ANALYSIS_ID, final_output_dir))        
+    else:
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.volumes.txt %s/' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.mgz %s/' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.FSvoxelSpace.mgz %s/' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/mri/nu.mgz %s/' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats %s/' % (subject_name, final_output_dir))
+        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats %s/' % (subject_name, final_output_dir))
