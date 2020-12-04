@@ -10,8 +10,26 @@ RUN mkdir -p ${FLYWHEEL}
 COPY manifest.json run ${FLYWHEEL}
 RUN chmod +x /flywheel/v0/run
 
-RUN apt-get install ants zip unzip python3 python3-pip
-RUN pyton3-pip install nibabel==2.5.1 matplotlib imageio
+# Install required packages    
+RUN apt-get update \
+    && apt-get install -y \
+    git \
+    python3 \
+    python3-pip \
+    zip \
+    unzip \
+    ants \
+    wget
+
+RUN pip3 install --upgrade pip
+RUN pip3 install nibabel==2.5.1 matplotlib imageio
+
+# Download and install Freesurfer on call
+RUN wget https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
+RUN mkdir freesurfer
+RUN tar -zxf freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz 
+COPY license.txt /freesurfer/license.txt
+ENV FREESURFER_HOME /freesurfer
 
 # Set the entrypoint  
 ENTRYPOINT /flywheel/v0/run

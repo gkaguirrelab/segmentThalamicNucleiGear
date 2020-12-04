@@ -27,13 +27,13 @@
 	},
 	"config": {
 		"verbose": {
-			"description": "Verbose.",
 			"default": "0",
+			"description": "Verbose.",
 			"type": "string"
 		}
 	},
-	"author": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu>",
-	"maintainer": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu>",
+	"author": "Ozenc Taskin",
+	"maintainer": "Ozenc Taskin",
 	"license": "Other",
 	"source": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
@@ -43,7 +43,7 @@
 		},
 		"gear-builder": {
 			"category": "analysis",
-			"image": "gkaguirrelab/register-thalamic-segmentations:0.1.0"
+			"image": "gkaguirrelab/register_thalamic_segmentations_gear:0.1.0"
 		}
 	}
 }

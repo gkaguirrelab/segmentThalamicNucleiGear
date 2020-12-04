@@ -73,18 +73,7 @@ if output_entire_subject_dir == True:
     os.system('cd /usr/local/freesurfer/subjects/; zip -r %s %s' % (final_output_dir, subject_name))
 else:
     if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.volumes.txt %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.mgz %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/%s.thalamus.%s.mgz %s/' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/%s.thalamus.%s.stripped.bfcorr.mgz %s/' % (subject_name, ANALYSIS_ID, BBREGISTER_MODE, final_output_dir))                
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/nu.mgz %s' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats %s/' % (subject_name, ANALYSIS_ID, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats %s/' % (subject_name, ANALYSIS_ID, final_output_dir))        
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip ThalamicNuclei.v12.%s.volumes.txt ThalamicNuclei.v12.%s.mgz ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s.thalamus.%s.mgz %s.thalamus.%s.stripped.bfcorr.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name)) 
+
     else:
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.volumes.txt %s/' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.mgz %s/' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.FSvoxelSpace.mgz %s/' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/mri/nu.mgz %s/' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats %s/' % (subject_name, final_output_dir))
-        os.system('cp /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats %s/' % (subject_name, final_output_dir))
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name))

@@ -2,7 +2,7 @@
 	"name": "segmentthalamicnuclei",
 	"label": "segmentThalamicNuclei: Produce parcellation of the thalamus",
 	"description": "This tool produces a parcellation of the thalamus into 25 different nuclei, using a probabilistic atlas built with histological data. Based on A probabilistic atlas of the human thalamic nuclei combining ex vivo MRI and histology. Iglesias, J.E., Insausti, R., Lerma-Usabiaga, G., Bocchetta, M., Van Leemput, K., Greve, D., van der Kouwe, A., Caballero-Gaudes, C., Paz-Alonso, P. Neuroimage (accepted).",
-	"version": "0.2.0",
+	"version": "0.2.2",
 	"inputs": {
 		"FILE_ADDITIONAL_SCAN": {
 			"base": "file",
@@ -27,13 +27,13 @@
 	},
 	"config": {
 		"ANALYSIS_ID": {
-			"description": "Use this config if you specified an additional scan. ANALYSIS_ID is a user defined identifier that makes it possible to run different analysis with different types of additional scans. For example, you can run the command with a DBS volume and use the identifier 'DBS', and then run it again with a FGATIR volume and use the identifier 'FGATIR', such that both results will coexist in the subject's mri directory.",
 			"default": "NA",
+			"description": "Use this config if you specified an additional scan. ANALYSIS_ID is a user defined identifier that makes it possible to run different analysis with different types of additional scans. For example, you can run the command with a DBS volume and use the identifier 'DBS', and then run it again with a FGATIR volume and use the identifier 'FGATIR', such that both results will coexist in the subject's mri directory.",
 			"type": "string"
 		},
 		"BBREGISTER_MODE": {
-			"description": "Use this config if you specified an additional scan. BBREGISTER_MODE: this module relies on BBregister for the registration of the additional scan to the main T1 volume. This argument specifies the contrast of the additional scan, and can be equal to 't1', 't2', or 'none'. Modes 't1' and 't2' map directly to the corresponding BBregister contrast flags, which specifies whether white matter is brighter than gray matter (t1 mode) or the other way around (t2 mode). Note that the additional volume does not have to be a T1 or T2 scan; for example, a FGATIR scan like the one in the figure above would be processed with the 't2' flag, since the gray matter is brighter than the white matter. Finally, the third mode (none) skips the registration (i.e., assumes that the additional scan has already been registered to the main FreeSurfer T1), and is therefore compatible with any MRI contrast.",
 			"default": "NA",
+			"description": "Use this config if you specified an additional scan. BBREGISTER_MODE: this module relies on BBregister for the registration of the additional scan to the main T1 volume. This argument specifies the contrast of the additional scan, and can be equal to 't1', 't2', or 'none'. Modes 't1' and 't2' map directly to the corresponding BBregister contrast flags, which specifies whether white matter is brighter than gray matter (t1 mode) or the other way around (t2 mode). Note that the additional volume does not have to be a T1 or T2 scan; for example, a FGATIR scan like the one in the figure above would be processed with the 't2' flag, since the gray matter is brighter than the white matter. Finally, the third mode (none) skips the registration (i.e., assumes that the additional scan has already been registered to the main FreeSurfer T1), and is therefore compatible with any MRI contrast.",
 			"type": "string"
 		},
 		"n_threads": {
@@ -45,10 +45,10 @@
 			"default": false,
 			"description": "If used, output the entire subjects recon-all directory with the newly created files inside. Otherwise, just output the thalamic output",
 			"type": "boolean"
-		}		
+		}
 	},
-	"author": "Juan Eugenio Iglesias <e.iglesias@ucl.ac.uk>",
-	"maintainer": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu>",
+	"author": "Juan Eugenio Iglesias <e.iglesias@ucl.ac.uk",
+	"maintainer": "Ozenc Taskin <HuseyinOzenc.Taskin@pennmedicine.upenn.edu",
 	"license": "Other",
 	"source": "http://freesurfer.net/fswiki/ThalamicNuclei",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear",
@@ -58,7 +58,7 @@
 		},
 		"gear-builder": {
 			"category": "analysis",
-			"image": "gkaguirrelab/segmentthalamicnuclei:0.1.0"
+			"image": "gkaguirrelab/segmentthalamicnuclei:0.2.1"
 		}
 	}
 }

@@ -18,7 +18,7 @@ manifest_file = os.path.join(flywheel_base, 'manifest.json')
 config_path = os.path.join(flywheel_base, 'config.json')
 os.system('mkdir %s'%first_output_dir)
 os.system('mkdir %s'%workdir)
-
+freesurfer_environment_path = 'export FREESURFER_HOME=/freesurfer;export SUBJECTS_DIR=/freesurfer/subjects/; export PATH="$FREESURFER_HOME/bin:$PATH"; export PATH="$SUBJECTS_DIR:$PATH"'
 ####################### Define some functions for plotting ####################
 
 def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_ratio_vector, output_folder):
@@ -58,29 +58,6 @@ def make_gif(image_folder, gif_name, output_folder):
         images.append(imageio.imread(os.path.join(image_folder, filename)))
         imageio.mimsave('/%s/%s.gif' % (output_folder, gif_name), images, duration=0.7)
 
-####################### Process Inputs ######################################## 
-
-# Unzip the thalamic segmentation archive
-thalamicSegmentationArchivePath = os.path.join(flywheel_base, 'input/thalamicSegmentationArchive')
-thalamicSegmentationArchive = os.path.join(thalamicSegmentationArchivePath, os.listdir(thalamicSegmentationArchivePath)[0])
-unzipped_folder_path = '/opt/unzipped_folder_thalamic'
-os.system('mkdir %s' % unzipped_folder_path)
-os.system('unzip -q %s -d %s' % (thalamicSegmentationArchive, unzipped_folder_path))
-nu_image = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0], 'nu.mgz')
-
-# Unzip the qsiprep archive 
-qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
-qsiprepArchive = os.path.join(qsiprepArchivePath, os.listdir(qsiprepArchivePath)[0])
-unzipped_folder_path_two = '/opt/unzipped_folder_qsiprep'
-os.system('mkdir %s' % unzipped_folder_path_two)
-os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
-main_qsiprep_archive = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path_two)[0])
-qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0], 'qsiprep')
-for i in os.listdir(qsiprep_dir):
-    if os.path.isdir(i) & 'sub' in i:
-        processed_anatomical = os.path.join(qsiprep_dir, i, 'anat', '%s_desc-preproc_T1w.nii.gz' % i)
-        subject_id = i[4:]
-
 ###################Parse Config Here############################
 
 with open(config_path) as config_file:
@@ -89,34 +66,95 @@ config = job_config['config']
 
 verbose = config['verbose']
 
+####################### Process Inputs ######################################## 
+
+# Unzip the thalamic segmentation archive
+thalamicSegmentationArchivePath = os.path.join(flywheel_base, 'input/thalamicSegmentationArchive')
+thalamicSegmentationArchive = os.path.join(thalamicSegmentationArchivePath, os.listdir(thalamicSegmentationArchivePath)[0])
+unzipped_folder_path = '/opt/unzipped_folder_thalamic'
+os.system('mkdir %s' % unzipped_folder_path)
+if verbose == '0':
+    os.system('unzip -q %s -d %s' % (thalamicSegmentationArchive, unzipped_folder_path))
+else:
+    os.system('unzip %s -d %s' % (thalamicSegmentationArchive, unzipped_folder_path))
+nu_image = os.path.join(unzipped_folder_path, 'nu.mgz')
+segment = os.path.join(unzipped_folder_path, 'ThalamicNuclei.v12.T1.mgz')
+segment_lowres = os.path.join(unzipped_folder_path, 'ThalamicNuclei.v12.T1.FSvoxelSpace.mgz')
+
+# Create image temp
+file_temp = '/filetemp'
+os.system('mkdir %s' % file_temp)
+nu_image_nifti = os.path.join(file_temp, 'nu.nii')
+segment_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.nii')
+segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpace.nii')
+
+# Convert the segmentations to nifti
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, nu_image, nu_image_nifti))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment, segment_nifti))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres, segment_lowres_nifti))
+
+# Unzip the qsiprep archive 
+qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
+qsiprepArchive = os.path.join(qsiprepArchivePath, os.listdir(qsiprepArchivePath)[0])
+unzipped_folder_path_two = '/opt/unzipped_folder_qsiprep'
+os.system('mkdir %s' % unzipped_folder_path_two)
+if verbose == '0':
+    os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
+else:
+    os.system('unzip %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
+main_qsiprep_archive = os.path.join(unzipped_folder_path_two, os.listdir(unzipped_folder_path_two)[0])
+qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0])
+
+for i in os.listdir(qsiprep_dir):
+    if os.path.isdir(os.path.join(qsiprep_dir, i)) == True:
+        if 'sub' in i:
+            processed_anatomical = os.path.join(qsiprep_dir, i, 'anat', '%s_desc-preproc_T1w.nii.gz' % i)
+            subject_id = i[4:]
+
+
 ###################Run Algorithm################################
 # Run ants registration 
-reg_command = '''antsRegistration --verbose %s --dimensionality 3
-                 --float 0 --collapse-output-transforms 1 
-                 --output [ registered,/workdir/registeredWarped.nii.gz,/workdir/registeredInverseWarped.nii.gz ]
-                 --interpolation Linear --use-histogram-matching 0 --winsorize-image-intensities [ 0.005,0.995 ] 
-                 --initial-moving-transform [ %s,%s,1 ] --transform Rigid[ 0.1 ] 
-                 --metric MI[ %s,%s,1,32,Regular,0.25 ] 
-                 --convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 8x4x2x1 
-                 --smoothing-sigmas 3x2x1x0vox''' % (verbose, processed_anatomical, nu_image,
-                                                     processed_anatomical, nu_image)
+reg_command = ('antsRegistration --verbose %s --dimensionality 3 '
+'--float 0 --collapse-output-transforms 1 '
+'--output [ /workdir/registered,/workdir/nuWarped.nii.gz,/workdir/nuInverseWarped.nii.gz ] '
+'--interpolation Linear --use-histogram-matching 0 --winsorize-image-intensities [ 0.005,0.995 ] '
+'--initial-moving-transform [ %s,%s,1 ] --transform Rigid[ 0.1 ] '
+'--metric MI[ %s,%s,1,32,Regular,0.25 ] '
+'--convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 8x4x2x1 '
+'--smoothing-sigmas 3x2x1x0vox' % (verbose, processed_anatomical, nu_image_nifti,
+                                   processed_anatomical, nu_image_nifti))
 
-os.system(reg_command)    
+os.system(reg_command)
 generic_affine = '/workdir/registered0GenericAffine.mat'
-warped = '/workdir/registeredWarped.nii'
+warped = '/workdir/nuWarped.nii.gz'
+inverse_warped = '/workdir/nuInverseWarped.nii.gz'
+
+# Apply transformations to the segmentations
+os.system('antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -n NearestNeighbor -v %s' % (segment_nifti, processed_anatomical, segment_nifti, generic_affine, verbose))
+os.system('antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -n NearestNeighbor -v %s' % (segment_lowres_nifti, processed_anatomical, segment_lowres_nifti, generic_affine, verbose))
+
+# First save paths before zipping and mgz conversion
+warped_final_save = os.path.join(first_output_dir, 'nuWarped.mgz')
+inverse_warped_final_save = os.path.join(first_output_dir, 'nuInverseWarped.mgz')
+segment_nifti_final_save = os.path.join(first_output_dir, 'ThalamicNuclei.v12.T1.mgz')
+segment_lowres_nifti_final_save = os.path.join(first_output_dir, 'ThalamicNuclei.v12.T1.FSvoxelSpace.mgz')
+
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, warped, warped_final_save))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, inverse_warped, inverse_warped_final_save))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_nifti, segment_nifti_final_save))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres_nifti, segment_lowres_nifti_final_save))
 
 for file in os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]):
     path_to_file = os.path.join(os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]), file)
-    if os.path.splitext(file)[1] == '.mgz':   
-        command = 'antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -v %s' % (path_to_file, processed_anatomical,
-                                                                              path_to_file, generic_affine, verbose)
-        os.system(command)
-    
-    os.system('cp %s %s/' % (path_to_file, final_output_dir))
+    if os.path.splitext(file)[1] == '.txt' or os.path.splitext(file)[1] == '.stats':
+        os.system('cp %s %s/' % (path_to_file, first_output_dir))
 
 # Make plots 
 temp_for_images = '/tempim'
 os.system('mkdir %s' % temp_for_images)
-make_plot(subject_id, processed_anatomical, 'NA', 'Warp results', 'im1.png', 131, 105, 45, [0.6, 0.6, 1.4, 0.6, 0.6, 1.4], temp_for_images)
-make_plot(subject_id, warped, 'NA', 'Warp results', 'im2.png', 131, 105, 45, [0.6, 0.6, 1.4, 0.6, 0.6, 1.4], temp_for_images)
+make_plot(subject_id, processed_anatomical, 'NA', 'Warp results', 'im1.png', 131, 105, 45, [1,1,1,1,1,1], temp_for_images)
+make_plot(subject_id, warped_final_save, 'NA', 'Warp results', 'im2.png', 131, 105, 45, [1,1,1,1,1,1], temp_for_images)
 make_gif(temp_for_images, subject_id + '_' + 'orig2Acpc', final_output_dir)
+
+# Zip everything and output
+os.system('cd %s; zip -q %s/%s_warped_segmentations.zip *' % (first_output_dir, final_output_dir, subject_id))
