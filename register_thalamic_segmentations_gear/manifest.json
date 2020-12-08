@@ -1,12 +1,12 @@
 {
 	"name": "register-thalamic-segmentations",
 	"label": "registerThalamicSegmentations: Register thalamic segmentaitons to ACPC using ANTS",
-	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to ACPC to make them usable with fixel maps. Requires qsiprep output in T1w and recon all archive for the registration",
+	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to qsirecon FOD images. Requires qsirecon output in T1w and recon all archive for the registration",
 	"version": "0.1.0",
 	"inputs": {
-		"qsiprepArchive": {
+		"qsireconArchive": {
 			"base": "file",
-			"description": "qsiprep output archive",
+			"description": "qsirecon output archive",
 			"optional": false,
 			"type": {
 				"enum": [

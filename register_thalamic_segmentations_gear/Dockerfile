@@ -18,7 +18,7 @@ RUN apt-get update \
     python3-pip \
     zip \
     unzip \
-    ants \
+    fsl-core \
     wget
 
 RUN pip3 install --upgrade pip

@@ -49,14 +49,6 @@ def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_r
         ax3.axis('off')
 
     plt.savefig(os.path.join(output_folder, subject_id + '_' + filename)) 
-    
-def make_gif(image_folder, gif_name, output_folder):
-    
-    # Make a gif out of multiple images
-    images = []
-    for filename in os.listdir(image_folder):
-        images.append(imageio.imread(os.path.join(image_folder, filename)))
-        imageio.mimsave('/%s/%s.gif' % (output_folder, gif_name), images, duration=0.7)
 
 ###################Parse Config Here############################
 
@@ -94,67 +86,65 @@ os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres, segment_lowres_nifti))
 
 # Unzip the qsiprep archive 
-qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
-qsiprepArchive = os.path.join(qsiprepArchivePath, os.listdir(qsiprepArchivePath)[0])
-unzipped_folder_path_two = '/opt/unzipped_folder_qsiprep'
+qsireconArchivePath = os.path.join(flywheel_base, 'input/qsireconArchive')
+qsireconArchive = os.path.join(qsireconArchivePath, os.listdir(qsireconArchivePath)[0])
+unzipped_folder_path_two = '/opt/unzipped_folder_qsirecon'
 os.system('mkdir %s' % unzipped_folder_path_two)
 if verbose == '0':
-    os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
+    os.system('unzip -q %s -d %s' % (qsireconArchive, unzipped_folder_path_two))
 else:
-    os.system('unzip %s -d %s' % (qsiprepArchive, unzipped_folder_path_two))
-main_qsiprep_archive = os.path.join(unzipped_folder_path_two, os.listdir(unzipped_folder_path_two)[0])
-qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0])
+    os.system('unzip %s -d %s' % (qsireconArchive, unzipped_folder_path_two))
+main_qsirecon_archive = os.path.join(unzipped_folder_path_two, os.listdir(unzipped_folder_path_two)[0])
+qsirecon_dir =  os.path.join(main_qsirecon_archive, os.listdir(main_qsirecon_archive)[0])
 
-for i in os.listdir(qsiprep_dir):
-    if os.path.isdir(os.path.join(qsiprep_dir, i)) == True:
+for i in os.listdir(qsirecon_dir):
+    if os.path.isdir(os.path.join(qsirecon_dir, i)) == True:
         if 'sub' in i:
-            processed_anatomical = os.path.join(qsiprep_dir, i, 'anat', '%s_desc-preproc_T1w.nii.gz' % i)
+            fod_image = os.path.join(qsirecon_dir, i, 'ses-1', 'dwi', '%s_ses-1_space-T1w_desc-preproc_space-T1w_desc-wmFODmtnormed_msmtcsd.mif.gz' % i)
             subject_id = i[4:]
 
 
 ###################Run Algorithm################################
-# Run ants registration 
-reg_command = ('antsRegistration --verbose %s --dimensionality 3 '
-'--float 0 --collapse-output-transforms 1 '
-'--output [ /workdir/registered,/workdir/nuWarped.nii.gz,/workdir/nuInverseWarped.nii.gz ] '
-'--interpolation Linear --use-histogram-matching 0 --winsorize-image-intensities [ 0.005,0.995 ] '
-'--initial-moving-transform [ %s,%s,1 ] --transform Rigid[ 0.1 ] '
-'--metric MI[ %s,%s,1,32,Regular,0.25 ] '
-'--convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 8x4x2x1 '
-'--smoothing-sigmas 3x2x1x0vox' % (verbose, processed_anatomical, nu_image_nifti,
-                                   processed_anatomical, nu_image_nifti))
-
+# Run fsl registration 
+reg_command = ('flirt -in %s -ref %s -out %s -omat /workdir/registered0GenericAffine.mat '
+               '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6' % (fod_image, nu_image,
+                                                                                    '/workdir/nuRegistered.nii.gz'))
 os.system(reg_command)
 generic_affine = '/workdir/registered0GenericAffine.mat'
-warped = '/workdir/nuWarped.nii.gz'
-inverse_warped = '/workdir/nuInverseWarped.nii.gz'
+warped = '/workdir/nuRegistered.nii.gz'
+
+# Calculate the inverse of the generic_affine 
+inverse_generic_affine = '/workdir/inverseRegistered0GenericAffine.mat'
+os.system('convert_xfm -omat %s -inverse %s' % (inverse_generic_affine, generic_affine))
 
 # Apply transformations to the segmentations
-os.system('antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -n NearestNeighbor -v %s' % (segment_nifti, processed_anatomical, segment_nifti, generic_affine, verbose))
-os.system('antsApplyTransforms -d 3 -i %s -r %s -o %s -t %s -n NearestNeighbor -v %s' % (segment_lowres_nifti, processed_anatomical, segment_lowres_nifti, generic_affine, verbose))
+os.system('flirt -in %s -ref %s -applyxfm -init %s -interp nearestneighbour -out %s' % (segment_nifti, fod_image, inverse_generic_affine, segment_nifti))
+os.system('flirt -in %s -ref %s -applyxfm -init %s -interp nearestneighbour -out %s' % (segment_lowres_nifti, fod_image, inverse_generic_affine, segment_lowres_nifti))
 
 # First save paths before zipping and mgz conversion
-warped_final_save = os.path.join(first_output_dir, 'nuWarped.mgz')
-inverse_warped_final_save = os.path.join(first_output_dir, 'nuInverseWarped.mgz')
+warped_final_save = os.path.join(first_output_dir, 'nuRegistered.mgz')
 segment_nifti_final_save = os.path.join(first_output_dir, 'ThalamicNuclei.v12.T1.mgz')
 segment_lowres_nifti_final_save = os.path.join(first_output_dir, 'ThalamicNuclei.v12.T1.FSvoxelSpace.mgz')
 
+# Convert images back to mgz
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, warped, warped_final_save))
-os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, inverse_warped, inverse_warped_final_save))
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_nifti, segment_nifti_final_save))
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres_nifti, segment_lowres_nifti_final_save))
 
+# Copy the stats folder
 for file in os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]):
     path_to_file = os.path.join(os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0]), file)
     if os.path.splitext(file)[1] == '.txt' or os.path.splitext(file)[1] == '.stats':
         os.system('cp %s %s/' % (path_to_file, first_output_dir))
 
+# Get the first Tr of the FOD image for plotting
+single_tr_fod = '/workdir/singlefod.nii.gz'
+os.system('fslroi %s %s 0 1' % (fod_image))
+
 # Make plots 
 temp_for_images = '/tempim'
 os.system('mkdir %s' % temp_for_images)
-make_plot(subject_id, processed_anatomical, 'NA', 'Warp results', 'im1.png', 131, 105, 45, [1,1,1,1,1,1], temp_for_images)
-make_plot(subject_id, warped_final_save, 'NA', 'Warp results', 'im2.png', 131, 105, 45, [1,1,1,1,1,1], temp_for_images)
-make_gif(temp_for_images, subject_id + '_' + 'orig2Acpc', final_output_dir)
+make_plot(subject_id, single_tr_fod, segment_lowres_nifti_final_save, 'Registration results', 'registrationResults.png', 131, 105, 45, [1,1,1,1,1,1], temp_for_images)
 
 # Zip everything and output
 os.system('cd %s; zip -q %s/%s_warped_segmentations.zip *' % (first_output_dir, final_output_dir, subject_id))
