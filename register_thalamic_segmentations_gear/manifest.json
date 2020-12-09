@@ -1,8 +1,8 @@
 {
 	"name": "register-thalamic-segmentations",
-	"label": "registerThalamicSegmentations: Register thalamic segmentaitons to ACPC using ANTS",
+	"label": "registerThalamicSegmentations: Register thalamic segmentations to FOD space",
 	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to qsirecon FOD images. Requires qsirecon output in T1w and recon all archive for the registration",
-	"version": "0.1.0",
+	"version": "0",
 	"inputs": {
 		"qsireconArchive": {
 			"base": "file",
@@ -32,18 +32,15 @@
 			"type": "string"
 		}
 	},
-	"author": "Ozenc Taskin",
-	"maintainer": "Ozenc Taskin",
+	"author": "Ozzy Taskin",
+	"maintainer": "Ozzy Taskin",
 	"license": "Other",
 	"source": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"custom": {
-		"flywheel": {
-			"suite": "GKAguirreLab"
-		},
 		"gear-builder": {
 			"category": "analysis",
-			"image": "gkaguirrelab/register_thalamic_segmentations_gear:0.1.0"
+			"image": "gkaguirrelab/register-thalamic-segmentations:0.1.1"
 		}
 	}
 }
