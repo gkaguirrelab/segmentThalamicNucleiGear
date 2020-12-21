@@ -67,30 +67,31 @@ segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpa
 qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
 archive_name = os.listdir(qsiprepArchivePath)[0]
 qsiprepArchive = os.path.join(qsiprepArchivePath, archive_name)
-os.system('cp -r %s %s/' % (qsiprepArchive, first_output_dir))
-qsiprepArchive = os.path.join(first_output_dir, os.listdir(first_output_dir)[0])
 unzipped_folder_path = '/opt/unzipped_folder_qsiprep'
 os.system('mkdir %s' % unzipped_folder_path)
-os.system('unzip %s -d %s' % (qsiprepArchive, unzipped_folder_path))
+os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path))
 main_qsiprep_archive = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0])
 qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0])
 
 for i in os.listdir(qsiprep_dir):
     if os.path.isdir(os.path.join(qsiprep_dir, i)) == True:
         if 'sub' in i:
-            mask = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', 'sub-%s_ses-1_space-T1w_desc-brain_mask.nii.gz' % i)
-            t1 = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', 'sub-%s_ses-1_space-T1w_desc-preproc_dwi.nii.gz' % i)
+            mask = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', '%s_ses-1_space-T1w_desc-brain_mask.nii.gz' % i)
+            dwi = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', '%s_ses-1_space-T1w_desc-preproc_dwi.nii.gz' % i)
             subject_id = i[4:]
 
+single_dwi_folder = '/tmp/single_dwi_folder'
+os.system('mkdir %s' % single_dwi_folder)
+single_dwi_image = os.path.join(single_dwi_folder, 'single_dwi.nii.gz')
+os.system('%sfslroi %s %s 0 1' % (fsl_path, dwi, single_dwi_image))
 ###################Run Algorithm################################
-dilate_func = 'fslmaths %s -kernel sphere %s -dilD %s' % (mask, kernel, mask)
+dilate_func = '%sfslmaths %s -kernel sphere %s -dilD %s' % (fsl_path, mask, kernel, mask)
 os.system(dilate_func)
 
 # Make registration plots
-loaded_image = nib.load(t1)
+loaded_image = nib.load(dwi)
 dims = loaded_image.shape
-make_plot(subject_id, t1, mask, 'Dilated mask overlaid with T1', 'dilated_mask.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
+make_plot(subject_id, single_dwi_image, mask, 'Dilated mask overlaid with T1', 'dilated_mask.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
 
 # Zip everything and output
-os.system('cp -r %s %s/' % (qsiprepArchive, first_output_dir))
-os.system('cd %s; zip -q %s/%s.zip *' % (first_output_dir, final_output_dir, archive_name))
+os.system('cd %s; zip -r -q %s/%s *' % (unzipped_folder_path, final_output_dir, archive_name))

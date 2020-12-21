@@ -17,7 +17,7 @@
 	},
 	"config": {
 		"kernel": {
-			"default": "5",
+			"default": "6",
 			"description": "Kernel that will be used for the dilation. Default:6",
 			"type": "string"
 		}
@@ -28,9 +28,12 @@
 	"source": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"custom": {
+		"flywheel": {
+			"suite": "GKAguirreLab"
+		},
 		"gear-builder": {
 			"category": "analysis",
-			"image": "gkaguirrelab/register-thalamic-segmentations:0.1.1"
+			"image": "gkaguirrelab/dilate-qsiprep-mask:latest"
 		}
 	}
 }
