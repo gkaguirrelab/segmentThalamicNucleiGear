@@ -1,0 +1,96 @@
+#!/usr/bin/python3
+
+import os, json, imageio
+import matplotlib.pyplot as plt
+import nibabel as nib
+##################### Define the Paths and parameters ########################
+# Print the CPU info
+os.system('cat /proc/cpuinfo')
+
+# Set paths and create some folders
+flywheel_base ='/flywheel/v0/'
+first_output_dir = '/firstOutput'
+workdir = '/workdir'
+final_output_dir = os.path.join(flywheel_base, 'output')
+manifest_file = os.path.join(flywheel_base, 'manifest.json')
+config_path = os.path.join(flywheel_base, 'config.json')
+os.system('mkdir %s'%first_output_dir)
+os.system('mkdir %s'%workdir)
+fsl_path = 'FSLDIR=/fsl/; . ${FSLDIR}/etc/fslconf/fsl.sh; PATH=${FSLDIR}:${PATH};export FSLDIR PATH;/fsl/bin/'
+####################### Define some functions for plotting ####################
+
+def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_ratio_vector, output_folder):
+    
+    # This function simply gets two MRI images as inputs and overlays them 
+    # using different colors for each image. Used as a diagnostic image.
+        
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3)
+    fig.suptitle(title, fontsize=20)
+
+    epi_img = nib.load(base_image)
+    epi_img_data = epi_img.get_fdata()
+    ax1.imshow(epi_img_data[x,:,:], cmap="gray", aspect = apect_ratio_vector[0])
+    ax2.imshow(epi_img_data[:,y,:], cmap="gray", aspect = apect_ratio_vector[1])
+    ax3.imshow(epi_img_data[:,:,z], cmap="gray", aspect = apect_ratio_vector[2])
+    ax1.axis('off')
+    ax2.axis('off')
+    ax3.axis('off')  
+    
+    if overlay != 'NA':
+        epi_img = nib.load(overlay)
+        epi_img_data = epi_img.get_fdata()
+        ax1.imshow(epi_img_data[x,:,:], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[3])
+        ax2.imshow(epi_img_data[:,y,:], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[4])
+        ax3.imshow(epi_img_data[:,:,z], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[5])
+        ax1.axis('off')
+        ax2.axis('off')
+        ax3.axis('off')
+
+    plt.savefig(os.path.join(output_folder, subject_id + '_' + filename)) 
+###################Parse Config Here############################
+
+with open(config_path) as config_file:
+    job_config = json.load(config_file)
+config = job_config['config']
+
+kernel = config['kernel']
+
+####################### Process Inputs ######################################## 
+# Create image temp
+file_temp = '/filetemp'
+os.system('mkdir %s' % file_temp)
+nu_image_nifti = os.path.join(file_temp, 'nu.nii')
+segment_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.nii')
+segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpace.nii')
+
+# Unzip the qsiprep archive 
+qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
+archive_name = os.listdir(qsiprepArchivePath)[0]
+qsiprepArchive = os.path.join(qsiprepArchivePath, archive_name)
+os.system('cp -r %s %s/' % (qsiprepArchive, first_output_dir))
+qsiprepArchive = os.path.join(first_output_dir, os.listdir(first_output_dir)[0])
+unzipped_folder_path = '/opt/unzipped_folder_qsiprep'
+os.system('mkdir %s' % unzipped_folder_path)
+os.system('unzip %s -d %s' % (qsiprepArchive, unzipped_folder_path))
+main_qsiprep_archive = os.path.join(unzipped_folder_path, os.listdir(unzipped_folder_path)[0])
+qsiprep_dir =  os.path.join(main_qsiprep_archive, os.listdir(main_qsiprep_archive)[0])
+
+for i in os.listdir(qsiprep_dir):
+    if os.path.isdir(os.path.join(qsiprep_dir, i)) == True:
+        if 'sub' in i:
+            mask = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', 'sub-%s_ses-1_space-T1w_desc-brain_mask.nii.gz' % i)
+            t1 = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', 'sub-%s_ses-1_space-T1w_desc-preproc_dwi.nii.gz' % i)
+            subject_id = i[4:]
+
+###################Run Algorithm################################
+dilate_func = 'fslmaths %s -kernel sphere %s -dilD %s' % (mask, kernel, mask)
+os.system(dilate_func)
+
+# Make registration plots
+loaded_image = nib.load(t1)
+dims = loaded_image.shape
+make_plot(subject_id, t1, mask, 'Dilated mask overlaid with T1', 'dilated_mask.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
+
+# Zip everything and output
+os.system('cp -r %s %s/' % (qsiprepArchive, first_output_dir))
+os.system('cd %s; zip -q %s/%s.zip *' % (first_output_dir, final_output_dir, archive_name))

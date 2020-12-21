@@ -1,0 +1,36 @@
+{
+	"name": "dilate-qsiprep-mask",
+	"label": "dilateQsiprepMask: Dilate qsiprep masks to include the optic chiasm",
+	"description": "Dilates qsiprep mask to include optic chiasm",
+	"version": "0.1.0",
+	"inputs": {
+		"qsiprepArchive": {
+			"base": "file",
+			"description": "qsiprep output archive",
+			"optional": false,
+			"type": {
+				"enum": [
+					"archive"
+				]
+			}
+		}
+	},
+	"config": {
+		"kernel": {
+			"default": "5",
+			"description": "Kernel that will be used for the dilation. Default:6",
+			"type": "string"
+		}
+	},
+	"author": "Ozenc Taskin",
+	"maintainer": "Ozenc Taskin",
+	"license": "Other",
+	"source": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
+	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
+	"custom": {
+		"gear-builder": {
+			"category": "analysis",
+			"image": "gkaguirrelab/register-thalamic-segmentations:0.1.1"
+		}
+	}
+}
