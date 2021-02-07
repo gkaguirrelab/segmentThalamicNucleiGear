@@ -67,6 +67,7 @@ segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpa
 qsiprepArchivePath = os.path.join(flywheel_base, 'input/qsiprepArchive')
 archive_name = os.listdir(qsiprepArchivePath)[0]
 qsiprepArchive = os.path.join(qsiprepArchivePath, archive_name)
+dilated_archive_name = 'dilated_' + archive_name
 unzipped_folder_path = '/opt/unzipped_folder_qsiprep'
 os.system('mkdir %s' % unzipped_folder_path)
 os.system('unzip -q %s -d %s' % (qsiprepArchive, unzipped_folder_path))
@@ -77,6 +78,7 @@ for i in os.listdir(qsiprep_dir):
     if os.path.isdir(os.path.join(qsiprep_dir, i)) == True:
         if 'sub' in i:
             mask = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', '%s_ses-1_space-T1w_desc-brain_mask.nii.gz' % i)
+            mask_two = os.path.join(qsiprep_dir, i, 'anat', '%s_desc-brain_mask.nii.gz' % i)
             dwi = os.path.join(qsiprep_dir, i, 'ses-1', 'dwi', '%s_ses-1_space-T1w_desc-preproc_dwi.nii.gz' % i)
             subject_id = i[4:]
 
@@ -87,6 +89,8 @@ os.system('%sfslroi %s %s 0 1' % (fsl_path, dwi, single_dwi_image))
 ###################Run Algorithm################################
 dilate_func = '%sfslmaths %s -kernel sphere %s -dilD %s' % (fsl_path, mask, kernel, mask)
 os.system(dilate_func)
+dilate_func_two = '%sfslmaths %s -kernel sphere %s -dilD %s' % (fsl_path, mask_two, kernel, mask_two)
+os.system(dilate_func_two)
 
 # Make registration plots
 loaded_image = nib.load(dwi)
@@ -94,4 +98,4 @@ dims = loaded_image.shape
 make_plot(subject_id, single_dwi_image, mask, 'Dilated mask overlaid with T1', 'dilated_mask.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
 
 # Zip everything and output
-os.system('cd %s; zip -r -q %s/%s *' % (unzipped_folder_path, final_output_dir, archive_name))
+os.system('cd %s; zip -r -q %s/%s *' % (unzipped_folder_path, final_output_dir, dilated_archive_name))
