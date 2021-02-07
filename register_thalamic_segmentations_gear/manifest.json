@@ -2,17 +2,12 @@
 	"name": "register-thalamic-segmentations",
 	"label": "registerThalamicSegmentations: Register thalamic segmentations to FOD space",
 	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to qsirecon FOD images. Requires qsirecon output in T1w and recon all archive for the registration",
-	"version": "0",
+	"version": "0.1.2",
 	"inputs": {
-		"qsireconArchive": {
+		"targetImage": {
 			"base": "file",
-			"description": "qsirecon output archive",
-			"optional": false,
-			"type": {
-				"enum": [
-					"archive"
-				]
-			}
+			"description": "Image to use as a target image for the segmentation registration",
+			"optional": false
 		},
 		"thalamicSegmentationArchive": {
 			"base": "file",
@@ -30,14 +25,22 @@
 			"default": "0",
 			"description": "Verbose.",
 			"type": "string"
-		}
+		},
+		"subject_id": {
+			"default": "subject",
+			"description": "Subject ID.",
+			"type": "string"
+		}		
 	},
-	"author": "Ozzy Taskin",
-	"maintainer": "Ozzy Taskin",
+	"author": "Ozenc Taskin",
+	"maintainer": "Ozenc Taskin",
 	"license": "Other",
 	"source": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear/register_thalamic_segmentations_gear",
 	"custom": {
+		"flywheel": {
+			"suite": "GKAguirreLab"
+		},
 		"gear-builder": {
 			"category": "analysis",
 			"image": "gkaguirrelab/register-thalamic-segmentations:0.1.1"
