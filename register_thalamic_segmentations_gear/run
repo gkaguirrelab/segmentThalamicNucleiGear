@@ -66,6 +66,7 @@ config = job_config['config']
 
 verbose = config['verbose']
 subject_id = config['subject_id']
+reorient_to_std = config['reorient_to_std']
 ####################### Process Inputs ######################################## 
 
 # Unzip the thalamic segmentation archive
@@ -80,6 +81,7 @@ else:
 nu_image = os.path.join(unzipped_folder_path, 'nu.mgz')
 segment = os.path.join(unzipped_folder_path, 'ThalamicNuclei.v12.T1.mgz')
 segment_lowres = os.path.join(unzipped_folder_path, 'ThalamicNuclei.v12.T1.FSvoxelSpace.mgz')
+aparc_aseg = os.path.join(unzipped_folder_path, 'aparc+aseg.mgz')
 
 # Create image temp
 file_temp = '/filetemp'
@@ -87,15 +89,20 @@ os.system('mkdir %s' % file_temp)
 nu_image_nifti = os.path.join(file_temp, 'nu.nii.gz')
 segment_nifti = os.path.join(file_temp, 'for_viewing_higres_ThalamicNuclei.v12.T1.nii.gz')
 segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpace.nii.gz')
-os.system('%sfslreorient2std %s' % (fsl_path, nu_image_nifti))
-os.system('%sfslreorient2std %s' % (fsl_path, segment_nifti))
-os.system('%sfslreorient2std %s' % (fsl_path, segment_lowres_nifti))
+aparc_aseg_nifti = os.path.join(file_temp, 'aparc+aseg.nii.gz')
+
+if reorient_to_std == '1':
+    os.system('%sfslreorient2std %s' % (fsl_path, nu_image_nifti))
+    os.system('%sfslreorient2std %s' % (fsl_path, segment_nifti))
+    os.system('%sfslreorient2std %s' % (fsl_path, segment_lowres_nifti))
+    os.system('%sfslreorient2std %s' % (fsl_path, aparc_aseg_nifti))
 
 # Convert the segmentations to nifti
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, nu_image, nu_image_nifti))
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment, segment_nifti))
 os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres, segment_lowres_nifti))
-
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, aparc_aseg, aparc_aseg_nifti))
+    
 # Set path to the target image
 target_image_path = os.path.join(flywheel_base, 'input/targetImage')
 target_image = os.path.join(target_image_path, os.listdir(target_image_path)[0])
@@ -124,13 +131,16 @@ warped = '/workdir/nuRegistered.nii.gz'
 # Apply transformations to the segmentations
 higres_moved_segmentation = os.path.join(first_output_dir, 'registered_ThalamicNuclei.v12.T1.nii.gz')
 lowres_moved_segmentation = os.path.join(first_output_dir, 'registered_ThalamicNuclei.v12.T1.FSvoxelSpace.nii.gz')
+aparc_aseg_segmentation = os.path.join(first_output_dir, 'registered_aparc+aseg.nii.gz')
 
 if verbose == '0':
     os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_nifti, single_tr, generic_affine, higres_moved_segmentation))
     os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_lowres_nifti, single_tr, generic_affine, lowres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, aparc_aseg_nifti, single_tr, generic_affine, aparc_aseg_segmentation))
 if verbose == '1':   
     os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_nifti, single_tr, generic_affine, higres_moved_segmentation))
     os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_lowres_nifti, single_tr, generic_affine, lowres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, aparc_aseg_nifti, single_tr, generic_affine, aparc_aseg_segmentation))
 
 os.system('cp %s %s' % (target_image, first_output_dir))
 
