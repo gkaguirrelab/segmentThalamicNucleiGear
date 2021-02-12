@@ -2,7 +2,7 @@
 	"name": "register-thalamic-segmentations",
 	"label": "registerThalamicSegmentations: Register thalamic segmentations to FOD space",
 	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to qsirecon FOD images. Requires qsirecon output in T1w and recon all archive for the registration",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"inputs": {
 		"targetImage": {
 			"base": "file",

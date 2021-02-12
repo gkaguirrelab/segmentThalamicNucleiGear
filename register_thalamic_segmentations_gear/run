@@ -186,7 +186,7 @@ make_plot(subject_id, warped, 'NA', 'registration T1toFOD', 'second.png', round(
 make_gif(temp_for_images, 'T1toFOD', final_output_dir)
 
 # Make an overlay image
-make_plot(subject_id, single_tr, lowres_moved_segmentation, 'Segmentation overlaid with FOD', 'segmentationOutlineDiagnostics.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
+make_plot(subject_id, single_tr, lowres_moved_segmentation, 'Segmentation overlaid with target', 'segmentationOutlineDiagnostics.png', round(dims[0]/2), round(dims[1]/2), round(dims[2]/2), [1,1,1,1,1,1], final_output_dir)
 
 # Zip everything and output
 os.system('cd %s; zip -q %s/%s_warped_segmentations.zip *' % (first_output_dir, final_output_dir, subject_id))
