@@ -2,7 +2,7 @@
 	"name": "register-thalamic-segmentations",
 	"label": "registerThalamicSegmentations: Register thalamic segmentations to FOD space",
 	"description": "This tool takes the results of freesurfer thalamic segmentations and linearly registers them to qsirecon FOD images. Requires qsirecon output in T1w and recon all archive for the registration",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"inputs": {
 		"targetImage": {
 			"base": "file",
@@ -18,12 +18,37 @@
 					"archive"
 				]
 			}
+		},
+		"reconAllGearOutput": {
+			"base": "file",
+			"description": "Input a recon all archive if you want to use bbregister method",
+			"optional": true,
+			"type": {
+				"enum": [
+					"archive"
+				]
+			}
+		},
+		"freesurferLicense": {
+			"base": "file",
+			"description": "Input a freesurfer license if you want to use bbregister method",
+			"optional": true
 		}
 	},
 	"config": {
 		"subject_id": {
 			"default": "subject",
 			"description": "Subject ID.",
+			"type": "string"
+		},
+		"registration_tool": {
+			"default": "bbregister",
+			"description": "Tool to use for the registration. Can be bbregister or flirt. Default bbregister.",
+			"type": "string"
+		},
+		"dof": {
+			"default": "12",
+			"description": "Degrees of freedom for the registration. Can enter 6, 9, or 12",
 			"type": "string"
 		},
 		"verbose": {

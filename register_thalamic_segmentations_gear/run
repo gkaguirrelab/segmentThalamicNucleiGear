@@ -8,6 +8,9 @@ import nibabel as nib
 # Print the CPU info
 os.system('cat /proc/cpuinfo')
 
+# Install bc and csh
+os.system('apt-get install bc csh dc')
+
 # Set paths and create some folders
 flywheel_base ='/flywheel/v0/'
 first_output_dir = '/firstOutput'
@@ -15,10 +18,11 @@ workdir = '/workdir'
 final_output_dir = os.path.join(flywheel_base, 'output')
 manifest_file = os.path.join(flywheel_base, 'manifest.json')
 config_path = os.path.join(flywheel_base, 'config.json')
-os.system('mkdir %s'%first_output_dir)
-os.system('mkdir %s'%workdir)
+os.system('mkdir %s' % first_output_dir)
+os.system('mkdir %s' % workdir)
 freesurfer_environment_path = 'export FREESURFER_HOME=/freesurfer;export SUBJECTS_DIR=/freesurfer/subjects/; export PATH="$FREESURFER_HOME/bin:$PATH"; export PATH="$SUBJECTS_DIR:$PATH"'
 fsl_path = 'FSLDIR=/fsl/; . ${FSLDIR}/etc/fslconf/fsl.sh; PATH=${FSLDIR}:${PATH};export FSLDIR PATH;/fsl/bin/'
+
 ####################### Define some functions for plotting ####################
 
 def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_ratio_vector, output_folder):
@@ -67,6 +71,8 @@ config = job_config['config']
 verbose = config['verbose']
 subject_id = config['subject_id']
 reorient_to_std = config['reorient_to_std']
+dof = config['dof']
+registration_tool = config['registration_tool']
 ####################### Process Inputs ######################################## 
 
 # Unzip the thalamic segmentation archive
@@ -86,61 +92,87 @@ aparc_aseg = os.path.join(unzipped_folder_path, 'aparc+aseg.mgz')
 # Create image temp
 file_temp = '/filetemp'
 os.system('mkdir %s' % file_temp)
+
+# Convert the segmentations to nifti
 nu_image_nifti = os.path.join(file_temp, 'nu.nii.gz')
 segment_nifti = os.path.join(file_temp, 'for_viewing_higres_ThalamicNuclei.v12.T1.nii.gz')
 segment_lowres_nifti = os.path.join(file_temp, 'ThalamicNuclei.v12.T1.FSvoxelSpace.nii.gz')
 aparc_aseg_nifti = os.path.join(file_temp, 'aparc+aseg.nii.gz')
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, nu_image, nu_image_nifti))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment, segment_nifti))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres, segment_lowres_nifti))
+os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, aparc_aseg, aparc_aseg_nifti))
 
 if reorient_to_std == '1':
     os.system('%sfslreorient2std %s' % (fsl_path, nu_image_nifti))
     os.system('%sfslreorient2std %s' % (fsl_path, segment_nifti))
     os.system('%sfslreorient2std %s' % (fsl_path, segment_lowres_nifti))
     os.system('%sfslreorient2std %s' % (fsl_path, aparc_aseg_nifti))
-
-# Convert the segmentations to nifti
-os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, nu_image, nu_image_nifti))
-os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment, segment_nifti))
-os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, segment_lowres, segment_lowres_nifti))
-os.system('%s; /freesurfer/bin/mri_convert %s %s' % (freesurfer_environment_path, aparc_aseg, aparc_aseg_nifti))
     
 # Set path to the target image
 target_image_path = os.path.join(flywheel_base, 'input/targetImage')
 target_image = os.path.join(target_image_path, os.listdir(target_image_path)[0])
 
 # Get the first Tr of the FOD image for plotting
-single_tr = '/workdir/singlefod.nii.gz'
+single_tr = os.path.join(workdir, 'singlefod.nii.gz')
 os.system('%sfslroi %s %s 0 1' % (fsl_path, target_image, single_tr))
 
+# Get the freesurfer subject in the folder
+fs_subject_folder = os.path.join(flywheel_base, 'input/reconAllGearOutput')
+if os.path.exists(fs_subject_folder):
+    zip_file = os.path.join(fs_subject_folder, os.listdir(fs_subject_folder)[0])
+    unzipped_folder_path = '/opt/unzipped_folder'
+    os.system('mkdir %s' % unzipped_folder_path)
+    os.system('unzip -q %s -d %s' % (zip_file, unzipped_folder_path))
+    subject_name = os.listdir(unzipped_folder_path)[0]
+    initial_subject_folder = os.path.join(unzipped_folder_path, subject_name)
+    os.system('cp -r %s /freesurfer/subjects/' % initial_subject_folder)
+    
+    # Get the freesurfer license and move it to the freesurfer environment
+    freesurferLicensePath = os.path.join(flywheel_base, 'input/freesurferLicense')
+    freesurferLicense = os.path.join(freesurferLicensePath, os.listdir(freesurferLicensePath)[0])
+    os.system('cp %s /freesurfer/license.txt' % freesurferLicense)
 ###################Run Algorithm################################
-# Run fsl registration 
-if verbose == '0':
-    reg_command = ('%sflirt -in %s -ref %s -out %s -omat /workdir/registered0GenericAffine.mat '
-                   '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6' % (fsl_path, nu_image_nifti, single_tr, '/workdir/nuRegistered.nii.gz'))
-if verbose == '1':
-    reg_command = ('%sflirt -in %s -ref %s -out %s -omat /workdir/registered0GenericAffine.mat '
-                   '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -v' % (fsl_path, nu_image_nifti, single_tr, '/workdir/nuRegistered.nii.gz'))
-os.system(reg_command)
+# Run registration
+generic_affine = os.path.join(workdir, 'registered0GenericAffine.mat')
+warped = os.path.join(workdir, 'nuRegistered.nii.gz')
 
-generic_affine = '/workdir/registered0GenericAffine.mat'
-warped = '/workdir/nuRegistered.nii.gz'
+# Flirt method 
+if registration_tool == 'flirt':
+    if verbose == '0':
+        reg_command = ('%sflirt -in %s -ref %s -out %s -omat %s '
+                        '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof %s' % (fsl_path, nu_image_nifti, single_tr, warped, generic_affine, dof))
+    if verbose == '1':
+        reg_command = ('%sflirt -in %s -ref %s -out %s -omat %s '
+                        '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof %s -v' % (fsl_path, nu_image_nifti, single_tr, warped, generic_affine, dof))
+    os.system(reg_command)
+# bbregister method
+elif registration_tool == 'bbregister':
+    single_tr_to_targ_reg = os.path.join(workdir, 'single_tr_to_targ.reg')  
+    single_tr_to_targ_mat = os.path.join(workdir, 'single_tr_to_targ.mat')
+    reg_command = '%s; %s; csh /freesurfer/bin/bbregister --mov %s --s %s --reg %s --fslmat %s --t1 --%s' % (fsl_path, freesurfer_environment_path, single_tr,
+                                                                                                             subject_name, single_tr_to_targ_reg,
+                                                                                                             single_tr_to_targ_mat, dof)
+    os.system(reg_command)
+    os.system('%sconvert_xfm -omat %s -inverse %s' % (fsl_path, generic_affine, single_tr_to_targ_mat))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, nu_image_nifti, single_tr, dof, generic_affine, warped))
+else:
+    raise RuntimeError('Registration method is not recognnized')
 
-## Calculate the inverse of the generic_affine 
-#inverse_generic_affine = '/workdir/inverseRegistered0GenericAffine.mat'
-#os.system('%sconvert_xfm -omat %s -inverse %s' % (fsl_path,inverse_generic_affine, generic_affine))
-
+os.system('cp %s %s; cp %s %s; cp %s %s' % (generic_affine, final_output_dir, single_tr, final_output_dir, nu_image_nifti, final_output_dir))
 # Apply transformations to the segmentations
 higres_moved_segmentation = os.path.join(first_output_dir, 'registered_ThalamicNuclei.v12.T1.nii.gz')
 lowres_moved_segmentation = os.path.join(first_output_dir, 'registered_ThalamicNuclei.v12.T1.FSvoxelSpace.nii.gz')
 aparc_aseg_segmentation = os.path.join(first_output_dir, 'registered_aparc+aseg.nii.gz')
 
 if verbose == '0':
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_nifti, single_tr, generic_affine, higres_moved_segmentation))
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_lowres_nifti, single_tr, generic_affine, lowres_moved_segmentation))
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, aparc_aseg_nifti, single_tr, generic_affine, aparc_aseg_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_nifti, single_tr, dof, generic_affine, higres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, segment_lowres_nifti, single_tr, dof, generic_affine, lowres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s' % (fsl_path, aparc_aseg_nifti, single_tr, dof, generic_affine, aparc_aseg_segmentation))
 if verbose == '1':   
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_nifti, single_tr, generic_affine, higres_moved_segmentation))
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_lowres_nifti, single_tr, generic_affine, lowres_moved_segmentation))
-    os.system('%sflirt -in %s -ref %s -dof 6 -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, aparc_aseg_nifti, single_tr, generic_affine, aparc_aseg_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_nifti, single_tr, dof, generic_affine, higres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, segment_lowres_nifti, single_tr, dof, generic_affine, lowres_moved_segmentation))
+    os.system('%sflirt -in %s -ref %s -dof %s -applyxfm -init %s -interp nearestneighbour -out %s -v' % (fsl_path, aparc_aseg_nifti, single_tr, dof, generic_affine, aparc_aseg_segmentation))
 
 os.system('cp %s %s' % (target_image, first_output_dir))
 
