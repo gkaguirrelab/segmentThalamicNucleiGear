@@ -3,7 +3,7 @@
 import os
 import json
 from pathlib import Path
-
+from xfm_subcortToHcp import xfm_subcortToHcp
 
 SUBJECTS_DIR = Path("/usr/local/freesurfer/subjects")
 FREESURFER_HOME = "/usr/local/freesurfer"
@@ -17,11 +17,13 @@ os.system('cat /proc/cpuinfo')
 # Set paths and create some folders
 flywheel_base ='/flywheel/v0/'
 first_output_dir = '/firstOutput'
+segmentation_supplements = '/tmp/segmentTocifti_files.zip'
 final_output_dir = os.path.join(flywheel_base, 'output')
 manifest_file = os.path.join(flywheel_base, 'manifest.json')
 config_path = os.path.join(flywheel_base, 'config.json')
 os.system('mkdir %s'%first_output_dir)
 freesurfer_environment_path = 'export FREESURFER_HOME=/usr/local/freesurfer;export SUBJECTS_DIR=/usr/local/freesurfer/subjects/; export PATH="$FREESURFER_HOME/bin:$PATH"; export PATH="$SUBJECTS_DIR:$PATH"'
+
 ####################### Process Inputs ######################################## 
 
 # Unzip the recon all results and move the subject to the subjects folder
@@ -33,6 +35,14 @@ os.system('unzip -q %s -d %s' % (zip_file, unzipped_folder_path))
 subject_name = os.listdir(unzipped_folder_path)[0]
 initial_subject_folder = os.path.join(unzipped_folder_path, subject_name)
 os.system('cp -r %s /usr/local/freesurfer/subjects/' % initial_subject_folder)
+
+# Unzip segmentation stuff and set paths to them
+os.system('unzip %s -d /tmp/' % segmentation_supplements)
+MNI = os.path.join('/tmp', 'MNI152_T1_2mm.nii.gz')
+empty_left = os.path.join('/tmp', 'empty_left.func.gii')
+empty_right = os.path.join('/tmp', 'empty_right.func.gii')
+subcortex_label = os.path.join('/tmp', 'subcortexLabel.nii.gz')
+template_cifti = os.path.join('/tmp', 'template_cifti.nii')
 
 # Get the additional scan path if exists
 FILE_ADDITIONAL_SCAN_Path = os.path.join(flywheel_base, 'input/FILE_ADDITIONAL_SCAN')
@@ -67,13 +77,20 @@ if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
 else:
     os.system('export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=%s; %s;/usr/local/freesurfer/bin/segmentThalamicNuclei.sh %s' % (n_threads, freesurfer_environment_path, subject_name))
 
+# Make a cifti version
+subject_recon = os.path.join('/usr/local/freesurfer/subjects', subject_name)
+segmentation_folder = os.path.join(subject_recon, 'mri')
+segmentation_workdir = os.path.join('/tmp', 'segmentation_workdir')
+os.system('mkdir %s' % segmentation_workdir)
+output_vertex_file = os.path.join(first_output_dir, 'subcortex_cifti.dtseries.nii')
+xfm_subcortToHcp('', '/usr/local/freesurfer/bin/', '', subject_recon, segmentation_folder, subcortex_label, MNI, empty_left, empty_right, template_cifti, '1', segmentation_workdir, first_output_dir)
 ################## Zip everything and output ##################################
 
 if output_entire_subject_dir == True:
     os.system('cd /usr/local/freesurfer/subjects/; zip -r %s %s' % (final_output_dir, subject_name))
 else:
     if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
-        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.%s.volumes.txt ThalamicNuclei.v12.%s.mgz ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s.thalamus.%s.mgz %s.thalamus.%s.stripped.bfcorr.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name)) 
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.%s.volumes.txt ThalamicNuclei.v12.%s.mgz ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s.thalamus.%s.mgz %s.thalamus.%s.stripped.bfcorr.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats %s' % (subject_name,final_output_dir,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name, output_vertex_file)) 
 
     else:
-        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name))
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats %s' % (subject_name,final_output_dir,subject_name,subject_name,subject_name, output_vertex_file))
