@@ -12,6 +12,8 @@ SUBJECTS_DIR = Path("/usr/local/freesurfer/subjects")
 FREESURFER_HOME = "/usr/local/freesurfer"
 LICENSE_FILE = FREESURFER_HOME + "/license.txt"
 
+# Set environment to freesurfer
+os.environ['FREESURFER_HOME'] = FREESURFER_HOME
 ###################### Plot function #########################################
 
 def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_ratio_vector, output_folder):
