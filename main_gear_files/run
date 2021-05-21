@@ -1,14 +1,47 @@
-#!/usr/bin/python3
+#!/anaconda3/bin/python3
 
 import os
 import json
 from pathlib import Path
 from xfm_subcortToHcp import xfm_subcortToHcp
+import matplotlib.pyplot as plt 
+import nibabel as nib
+
 
 SUBJECTS_DIR = Path("/usr/local/freesurfer/subjects")
 FREESURFER_HOME = "/usr/local/freesurfer"
 LICENSE_FILE = FREESURFER_HOME + "/license.txt"
 
+###################### Plot function #########################################
+
+def make_plot(subject_id, base_image, overlay, title, filename, x, y, z, apect_ratio_vector, output_folder):
+    
+    # This function simply gets two MRI images as inputs and overlays them 
+    # using different colors for each image. Used as a diagnostic image.
+        
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3)
+    fig.suptitle(title, fontsize=20)
+
+    epi_img = nib.load(base_image)
+    epi_img_data = epi_img.get_fdata()
+    ax1.imshow(epi_img_data[x,:,:], cmap="gray", aspect = apect_ratio_vector[0])
+    ax2.imshow(epi_img_data[:,y,:], cmap="gray", aspect = apect_ratio_vector[1])
+    ax3.imshow(epi_img_data[:,:,z], cmap="gray", aspect = apect_ratio_vector[2])
+    ax1.axis('off')
+    ax2.axis('off')
+    ax3.axis('off')  
+    
+    if overlay != 'NA':
+        epi_img = nib.load(overlay)
+        epi_img_data = epi_img.get_fdata()
+        ax1.imshow(epi_img_data[x,:,:], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[3])
+        ax2.imshow(epi_img_data[:,y,:], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[4])
+        ax3.imshow(epi_img_data[:,:,z], cmap="hot", alpha=0.4, aspect = apect_ratio_vector[5])
+        ax1.axis('off')
+        ax2.axis('off')
+        ax3.axis('off')
+
+    plt.savefig(os.path.join(output_folder, subject_id + '_' + filename))    
 ###################### Define the Paths and parameters ########################
 
 # Print the CPU info
@@ -83,14 +116,17 @@ segmentation_folder = os.path.join(subject_recon, 'mri')
 segmentation_workdir = os.path.join('/tmp', 'segmentation_workdir')
 os.system('mkdir %s' % segmentation_workdir)
 output_vertex_file = os.path.join(first_output_dir, 'subcortex_cifti.dtseries.nii')
-xfm_subcortToHcp('', '/usr/local/freesurfer/bin/', '', subject_recon, segmentation_folder, subcortex_label, MNI, empty_left, empty_right, template_cifti, '1', segmentation_workdir, first_output_dir)
+overlay_nifti = xfm_subcortToHcp('', '/usr/local/freesurfer/bin/', '', subject_recon, segmentation_folder, subcortex_label, MNI, empty_left, empty_right, template_cifti, '1', segmentation_workdir, first_output_dir)
 ################## Zip everything and output ##################################
+
+make_plot(subject_name, MNI, overlay_nifti, 'MNI and segmentations', 'cifti_registration_qa.png', 50, 54, 39, [1,1,1,1,1,1], final_output_dir)
 
 if output_entire_subject_dir == True:
     os.system('cd /usr/local/freesurfer/subjects/; zip -r %s %s' % (final_output_dir, subject_name))
 else:
     if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
-        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.%s.volumes.txt ThalamicNuclei.v12.%s.mgz ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s.thalamus.%s.mgz %s.thalamus.%s.stripped.bfcorr.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats %s' % (subject_name,final_output_dir,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name, output_vertex_file)) 
-
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.%s.volumes.txt ThalamicNuclei.v12.%s.mgz ThalamicNuclei.v12.%s.FSvoxelSpace.mgz %s.thalamus.%s.mgz %s.thalamus.%s.stripped.bfcorr.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.%s.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.%s.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name,subject_name)) 
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s_cifti.zip %s' % (subject_name,final_output_dir,subject_name,output_vertex_file)) 
     else:
-        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats %s' % (subject_name,final_output_dir,subject_name,subject_name,subject_name, output_vertex_file))
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name))
+        os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s_cifti.zip %s' % (subject_name,final_output_dir,subject_name,output_vertex_file)) 

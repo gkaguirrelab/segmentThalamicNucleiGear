@@ -61,4 +61,4 @@ def xfm_subcortToHcp(ants_path, freesurfer_path, wb_path, recon_all_folder, segm
     os.system('%s -cifti-create-dense-from-template %s %s -series %s 0 -volume-all %s -metric CORTEX_LEFT %s -metric CORTEX_RIGHT %s' % (os.path.join(wb_path, 'wb_command'), template_cifti, os.path.join(outputdir, 'subcortex_cifti.dtseries.nii'),
                                                                                                                                          TR, segmentations_in_mni, empty_cifti_cortex_left, empty_cifti_cortex_right))
     
-    
+    return segmentations_in_mni

@@ -23,6 +23,15 @@ RUN (curl -sL https://rpm.nodesource.com/setup_12.x | bash -) \
 
 RUN source $FREESURFER_HOME/SetUpFreeSurfer.sh
 
+# Install Anaconda
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh
+RUN bash Anaconda3-2020.02-Linux-x86_64.sh -b -p /anaconda3
+ENV PATH=$PATH:/anaconda3/bin
+RUN conda update --all -y
+
+# Install the required python packages
+RUN pip install nibabel matplotlib
+
 # extra segmentations require matlab compiled runtime
 RUN fs_install_mcr R2014b
 
