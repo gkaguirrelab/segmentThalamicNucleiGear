@@ -7,7 +7,6 @@ from xfm_subcortToHcp import xfm_subcortToHcp
 import matplotlib.pyplot as plt 
 import nibabel as nib
 
-
 SUBJECTS_DIR = Path("/usr/local/freesurfer/subjects")
 FREESURFER_HOME = "/usr/local/freesurfer"
 LICENSE_FILE = FREESURFER_HOME + "/license.txt"
@@ -132,3 +131,8 @@ else:
     else:
         os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s.zip aparc+aseg.mgz ThalamicNuclei.v12.T1.volumes.txt ThalamicNuclei.v12.T1.mgz ThalamicNuclei.v12.T1.FSvoxelSpace.mgz nu.mgz -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.lh.v12.T1.stats -j /usr/local/freesurfer/subjects/%s/stats/thalamic-nuclei.rh.v12.T1.stats' % (subject_name,final_output_dir,subject_name,subject_name,subject_name))
         os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s_cifti.zip %s' % (subject_name,final_output_dir,subject_name,output_vertex_file)) 
+        
+# Copy the lut file to the output
+print(os.listdir('/usr/local/freesurfer/'))
+lut_file = '/usr/local/freesurfer/FreeSurferColorLUT.txt'
+os.sytem('cp %s %s' % (lut_file, final_output_dir))
