@@ -135,4 +135,4 @@ else:
 # Copy the lut file to the output
 print(os.listdir('/usr/local/freesurfer/'))
 lut_file = '/usr/local/freesurfer/FreeSurferColorLUT.txt'
-os.sytem('cp %s %s' % (lut_file, final_output_dir))
+os.system('cp %s %s' % (lut_file, final_output_dir))
