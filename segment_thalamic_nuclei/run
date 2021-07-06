@@ -98,6 +98,7 @@ ANALYSIS_ID = config['ANALYSIS_ID']
 BBREGISTER_MODE = config['BBREGISTER_MODE']
 n_threads = config['n_threads']
 output_entire_subject_dir = config['output_entire_subject_dir']
+extract_roi = config['extract_roi']
 
 # Convert n_threads to string
 n_threads = str(n_threads)
@@ -111,17 +112,141 @@ if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
 else:
     os.system('export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=%s; %s;/usr/local/freesurfer/bin/segmentThalamicNuclei.sh %s' % (n_threads, freesurfer_environment_path, subject_name))
 
-# Make a cifti version
-subject_recon = os.path.join('/usr/local/freesurfer/subjects', subject_name)
-segmentation_folder = os.path.join(subject_recon, 'mri')
-segmentation_workdir = os.path.join('/tmp', 'segmentation_workdir')
-os.system('mkdir %s' % segmentation_workdir)
-output_vertex_file = os.path.join(first_output_dir, 'subcortex_cifti.dtseries.nii')
-overlay_nifti = xfm_subcortToHcp('', '/usr/local/freesurfer/bin/', '', subject_recon, segmentation_folder, subcortex_label, MNI, empty_left, empty_right, template_cifti, '1', segmentation_workdir, first_output_dir)
+
 ################## Zip everything and output ##################################
 
-make_plot(subject_name, MNI, overlay_nifti, 'MNI and segmentations', 'cifti_registration_qa.png', 50, 54, 39, [1,1,1,1,1,1], final_output_dir)
+# Make a cifti version
+subject_recon = os.path.join('/usr/local/freesurfer/subjects', subject_name)
+segmentation_workdir = os.path.join('/tmp', 'segmentation_workdir')
+segmentation_folder = os.path.join(subject_recon, 'mri')
+os.system('mkdir %s; mkdir %s' % (segmentation_folder, segmentation_workdir))
+output_vertex_file = os.path.join(first_output_dir, 'subcortex_cifti.dtseries.nii') # This must be the output
+segmentations, generic_affine, warp = xfm_subcortToHcp('', '/usr/local/freesurfer/bin/', '', subject_recon, segmentation_folder, subcortex_label, MNI, empty_left, empty_right, template_cifti, '1', segmentation_workdir, first_output_dir)
 
+# Make a diagnostic plot for cifti
+make_plot(subject_name, MNI, segmentations, 'MNI and segmentations', 'cifti_registration_qa.png', 50, 54, 39, [1,1,1,1,1,1], final_output_dir)
+
+# Set some initial folder structures
+parcellation_workdir = os.path.join(first_output_dir, 'parcellation_workdir')
+volumetric_parcellation_folder = os.path.join(first_output_dir, 'volumetric_parcellations')
+os.system('mkdir %s; mkdir %s' % (parcellation_workdir, volumetric_parcellation_folder))
+
+# Set subfolders
+plus = os.path.join(parcellation_workdir, 'plus')
+exclam = os.path.join(parcellation_workdir, 'exclam')
+hash_sign = os.path.join(parcellation_workdir, 'hash_sign')
+at_sign = os.path.join(parcellation_workdir, 'at_sign')
+singles = os.path.join(parcellation_workdir, 'singles')
+os.system('mkdir %s; mkdir %s; mkdir %s; mkdir %s; mkdir %s' % (plus, exclam, hash_sign, at_sign, singles))
+
+roi_list = extract_roi.split(',')
+for i in roi_list: 
+    # # Set which file to use
+    # label = int(i)
+    # if 8234 > label > 8102:
+    #     if os.path.exists(FILE_ADDITIONAL_SCAN_Path):
+    #         segmentations = '/usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.%s.FSvoxelSpace.mgz' % (subject_name, subject_name)      
+    #     else:
+    #         segmentations = '/usr/local/freesurfer/subjects/%s/mri/ThalamicNuclei.v12.T1.FSvoxelSpace.mgz' % subject_name
+    # else:
+    #     raise RuntimeError('The specified label is not part of subthalamic region')
+    
+    # Decide save location from the sign
+    if i[0] == '+':
+        savepath = plus
+    elif i[0] == '!':
+        savepath = exclam
+    elif i[0] == '#':
+        savepath = hash_sign        
+    elif i[0] == '@':
+        savepath = at_sign
+    else:
+        savepath = singles
+        
+    # Remove the first symbol if there us one
+    if i[0] == '+' or i[0] == '!' or i[0] == '#' or i[0] == '@':
+        i = i[1:]
+    
+    lut = open('/usr/local/freesurfer/FreeSurferColorLUT.txt', 'r')
+    lut_lines = lut.readlines()
+    for line in lut_lines:
+        if i in line.split():
+            name = os.path.join(savepath, line.split()[1] + '.nii.gz')
+            os.system('%s;/usr/local/freesurfer/bin/mri_extract_label %s %s %s' % (freesurfer_environment_path, segmentations, i, name))
+            os.system('%s; /usr/local/freesurfer/bin/mri_binarize --i %s --min 127 --o %s' % (freesurfer_environment_path, name, name))
+            
+# Loop in the parcellations and combine the ones that needs to be combined
+plus_len = len(os.listdir(plus))
+if not plus_len == 0:
+    initial_combine_string = '%s; /usr/local/freesurfer/bin/mri_binarize' % freesurfer_environment_path
+    combination_file_name = ''
+    for par in range(plus_len):
+        file = os.listdir(plus)[par]
+        if par == 0:
+            initial_combine_string = initial_combine_string + ' --i %s' % os.path.join(plus, file)
+        else: 
+            initial_combine_string = initial_combine_string + ' --merge %s' % os.path.join(plus, file)
+        combination_file_name = combination_file_name + file[:-7] + '_'
+    combination_file_name = combination_file_name + '.nii.gz'
+    initial_combine_string = initial_combine_string + ' --match 1 --o %s' % os.path.join(volumetric_parcellation_folder, combination_file_name)
+    os.system(initial_combine_string)
+            
+exclam_len = len(os.listdir(exclam))
+if not exclam_len == 0:
+    initial_combine_string = '%s; /usr/local/freesurfer/bin/mri_binarize' % freesurfer_environment_path
+    combination_file_name = ''
+    for par in range(exclam_len):
+        file = os.listdir(exclam)[par]
+        if par == 0:
+            initial_combine_string = initial_combine_string + ' --i %s' % os.path.join(exclam, file)
+        else: 
+            initial_combine_string = initial_combine_string + ' --merge %s' % os.path.join(exclam, file)
+        combination_file_name = combination_file_name + file[:-7] + '_'
+    combination_file_name = combination_file_name + '.nii.gz'
+    initial_combine_string = initial_combine_string + ' --match 1 --o %s' % os.path.join(volumetric_parcellation_folder, combination_file_name)
+    os.system(initial_combine_string)        
+
+hash_sign_len = len(os.listdir(hash_sign))
+if not hash_sign_len == 0:
+    initial_combine_string = '%s; /usr/local/freesurfer/bin/mri_binarize' % freesurfer_environment_path
+    combination_file_name = ''
+    for par in range(hash_sign_len):
+        file = os.listdir(hash_sign)[par]
+        if par == 0:
+            initial_combine_string = initial_combine_string + ' --i %s' % os.path.join(hash_sign, file)
+        else: 
+            initial_combine_string = initial_combine_string + ' --merge %s' % os.path.join(hash_sign, file)
+        combination_file_name = combination_file_name + file[:-7] + '_'
+    combination_file_name = combination_file_name + '.nii.gz'
+    initial_combine_string = initial_combine_string + ' --match 1 --o %s' % os.path.join(volumetric_parcellation_folder, combination_file_name)
+    os.system(initial_combine_string)
+
+at_sign_len = len(os.listdir(at_sign))
+if not at_sign_len == 0:
+    initial_combine_string = '%s; /usr/local/freesurfer/bin/mri_binarize' % freesurfer_environment_path
+    combination_file_name = ''
+    for par in range(at_sign_len):
+        file = os.listdir(at_sign)[par]
+        if par == 0:
+            initial_combine_string = initial_combine_string + ' --i %s' % os.path.join(at_sign, file)
+        else: 
+            initial_combine_string = initial_combine_string + ' --merge %s' % os.path.join(at_sign, file)
+        combination_file_name = combination_file_name + file[:-7] + '_'
+    combination_file_name = combination_file_name + '.nii.gz'
+    initial_combine_string = initial_combine_string + ' --match 1 --o %s' % os.path.join(volumetric_parcellation_folder, combination_file_name)
+    os.system(initial_combine_string)
+
+os.system('cd %s; cp * %s' % (singles, volumetric_parcellation_folder))
+
+# Make cifti images
+cifti_folder = os.path.join(first_output_dir, 'cifti_folder')
+os.system('mkdir %s' % cifti_folder)
+for vol in os.listdir(volumetric_parcellation_folder):
+    new_file_name = vol[:-7] + '.dtseries.nii'
+    os.system('%s -cifti-create-dense-from-template %s %s -series %s 0 -volume-all %s -metric CORTEX_LEFT %s -metric CORTEX_RIGHT %s' % ('wb_command', template_cifti, os.path.join(cifti_folder, new_file_name),
+                                                                                                                                          '1', os.path.join(volumetric_parcellation_folder, vol), empty_left, empty_right))
+    
+################################## Save ouptut #######################################   
 if output_entire_subject_dir == True:
     os.system('cd /usr/local/freesurfer/subjects/; zip -r %s %s' % (final_output_dir, subject_name))
 else:
@@ -133,6 +258,13 @@ else:
         os.system('cd /usr/local/freesurfer/subjects/%s/mri/; zip %s/%s_cifti.zip %s' % (subject_name,final_output_dir,subject_name,output_vertex_file)) 
         
 # Copy the lut file to the output
-print(os.listdir('/usr/local/freesurfer/'))
 lut_file = '/usr/local/freesurfer/FreeSurferColorLUT.txt'
 os.system('cp %s %s' % (lut_file, final_output_dir))
+
+# Save all volume parcellations
+os.system('cp %s %s' % (generic_affine, volumetric_parcellation_folder))
+os.system('cp %s %s' % (warp, volumetric_parcellation_folder))
+os.system('cd %s; zip %s/%s_volumetric_parcelations_in_mni.zip *' % (volumetric_parcellation_folder, final_output_dir, subject_name))
+
+# Save cifti parcellations
+os.system('cd %s; cp * %s' % (cifti_folder, final_output_dir))

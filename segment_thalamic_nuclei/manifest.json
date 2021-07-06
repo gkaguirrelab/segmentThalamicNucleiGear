@@ -2,7 +2,7 @@
 	"name": "segmentthalamicnuclei",
 	"label": "segmentThalamicNuclei: Produce parcellation of the thalamus",
 	"description": "This tool produces a parcellation of the thalamus into 25 different nuclei, using a probabilistic atlas built with histological data. Based on A probabilistic atlas of the human thalamic nuclei combining ex vivo MRI and histology. Iglesias, J.E., Insausti, R., Lerma-Usabiaga, G., Bocchetta, M., Van Leemput, K., Greve, D., van der Kouwe, A., Caballero-Gaudes, C., Paz-Alonso, P. Neuroimage (accepted).",
-	"version": "0.3.1",
+	"version": "0.3.4",
 	"inputs": {
 		"FILE_ADDITIONAL_SCAN": {
 			"base": "file",
@@ -45,16 +45,21 @@
 			"default": false,
 			"description": "If used, output the entire subjects recon-all directory with the newly created files inside. Otherwise, just output the thalamic output",
 			"type": "boolean"
+		},
+		"extract_roi": {
+			"default": "+8109,+8209,8121,8122,8221,8222",
+			"description": "ROI to extract from segmentations. Specify the label here. If you want to get more than one segmentations, comma separate the labels. Check combine_roi config for combining the ROI extracted by this option. To create unified masks from multiple regions add one of + ! # @ signs in front of the label. The labels with the same sign will be merged into a unified mask image. The most recent list of labels can be found here: https://www.mail-archive.com/freesurfer@nmr.mgh.harvard.edu/msg64175.html",
+			"type": "string"
 		}
 	},
-	"author": "Iglesias J.E.",
+	"author": "Iglesias, J.E",
 	"maintainer": "Ozenc Taskin",
 	"license": "Other",
 	"source": "http://freesurfer.net/fswiki/ThalamicNuclei",
 	"url": "https://github.com/gkaguirrelab/segmentThalamicNucleiGear",
 	"custom": {
 		"flywheel": {
-			"suite": "GKAguirreLab"	
+			"suite": "GKAguirreLab"
 		},
 		"gear-builder": {
 			"category": "analysis",
